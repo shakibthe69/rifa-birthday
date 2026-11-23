@@ -1,0 +1,908 @@
+/* ==========================================================================
+   A Magical 3D Birthday Surprise for Rifa Jahan ❤️
+   Created with love by Shakib Ahmed
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Great+Vibes&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap');
+
+:root {
+  --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --font-display: 'Cinzel Decorative', 'Playfair Display', serif;
+  --font-script: 'Great Vibes', 'Brush Script MT', cursive;
+  --font-sans: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --color-bg-dark: #070510;
+  --color-bg-deep: #0e0922;
+  --color-bg-purple: #1b1037;
+  
+  --color-rose: #ff4d8d;
+  --color-rose-soft: #f472b6;
+  --color-rose-gold: #e29578;
+  --color-gold: #f59e0b;
+  --color-gold-light: #fef08a;
+  --color-gold-glow: #fbbf24;
+  --color-text-main: #ffffff;
+  --color-text-muted: rgba(255, 255, 255, 0.75);
+  
+  --glass-bg: rgba(20, 14, 38, 0.55);
+  --glass-border: rgba(255, 215, 0, 0.25);
+  --glass-border-rose: rgba(255, 77, 141, 0.35);
+  --glass-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  
+  --glow-pink: 0 0 25px rgba(255, 77, 141, 0.6);
+  --glow-gold: 0 0 30px rgba(251, 191, 36, 0.65);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--color-bg-dark);
+  color: var(--color-text-main);
+  font-family: var(--font-sans);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Background image overlay container */
+#bg-photo-overlay {
+  position: fixed;
+  inset: 0;
+  background-image: url('../images/background.jpg');
+  background-size: cover;
+  background-position: center center;
+  opacity: 0.18;
+  filter: blur(12px) saturate(1.4);
+  transform: scale(1.05);
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 1.5s ease;
+}
+
+/* 3D WebGL Canvas */
+#webgl-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+/* Canvas Confetti */
+#confetti-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 15;
+  pointer-events: none;
+}
+
+/* Cursor Sparkle Trailer (Desktop) */
+.sparkle-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 999;
+  border-radius: 50%;
+  animation: sparkle-fade 0.8s forwards ease-out;
+}
+
+@keyframes sparkle-fade {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.1) translateY(-15px);
+    opacity: 0;
+  }
+}
+
+/* ==========================================================================
+   UI Root Container & Scene Stack
+   ========================================================================== */
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 24px;
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.96) translateY(12px);
+  transition: opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
+              transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
+              visibility 0.8s;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.scene.active {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+  z-index: 5;
+}
+
+/* Common Card & Glassmorphism */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow: var(--glass-shadow);
+  padding: 32px 36px;
+  max-width: 90%;
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -50%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    60deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  transform: rotate(25deg);
+  pointer-events: none;
+}
+
+/* Romantic Typography */
+.script-tag {
+  font-family: var(--font-script);
+  font-size: 2.2rem;
+  color: var(--color-rose-soft);
+  text-shadow: var(--glow-pink);
+  margin-bottom: 6px;
+  display: block;
+  letter-spacing: 1px;
+}
+
+.display-title {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #fff7ed 0%, #fde047 50%, #f472b6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 18px rgba(251, 191, 36, 0.45));
+  margin-bottom: 12px;
+  line-height: 1.25;
+}
+
+.serif-subtitle {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+  max-width: 580px;
+  margin: 0 auto 20px auto;
+  line-height: 1.6;
+}
+
+.author-from {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-rose-soft);
+  margin-top: 14px;
+}
+
+/* Magical Buttons */
+.magic-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 36px;
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(135deg, #ec4899 0%, #d946ef 50%, #eab308 100%);
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 8px 30px rgba(236, 72, 153, 0.45), 0 0 15px rgba(234, 179, 8, 0.35);
+  transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.magic-btn:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 12px 35px rgba(236, 72, 153, 0.65), 0 0 25px rgba(234, 179, 8, 0.55);
+}
+
+.magic-btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.magic-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transform: rotate(30deg);
+  transition: 0.8s;
+  opacity: 0;
+}
+
+.magic-btn:hover::after {
+  opacity: 1;
+  transform: rotate(30deg) translate(50%, 50%);
+}
+
+.magic-btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+}
+
+.magic-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--color-rose-soft);
+  box-shadow: var(--glow-pink);
+}
+
+/* ==========================================================================
+   Scene Specific Layouts
+   ========================================================================== */
+
+/* Scene 1: Entrance Room */
+#scene-entrance {
+  z-index: 10;
+}
+
+.entrance-card {
+  max-width: 580px;
+  background: rgba(13, 9, 29, 0.72);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.door-hint {
+  font-size: 0.85rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--color-gold-glow);
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  animation: pulse-soft 2s infinite ease-in-out;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+
+/* Scene 2: Balloon Celebration */
+#scene-celebration {
+  justify-content: space-between;
+  padding: 60px 24px 80px 24px;
+}
+
+.celebration-header {
+  margin-top: 20px;
+  animation: float-gentle 4s ease-in-out infinite;
+}
+
+.celebration-cake-hint {
+  background: rgba(24, 15, 45, 0.65);
+  border: 1px solid rgba(255, 77, 141, 0.35);
+  border-radius: 40px;
+  padding: 10px 24px;
+  font-size: 0.9rem;
+  color: var(--color-gold-light);
+  letter-spacing: 1px;
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* Scene 3: Special Memories */
+#scene-memories {
+  padding-bottom: 90px;
+}
+
+.memories-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  max-width: 900px;
+  width: 100%;
+}
+
+.memory-captions-carousel {
+  position: relative;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.memory-caption-item {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-style: italic;
+  color: var(--color-gold-light);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+  max-width: 650px;
+  line-height: 1.6;
+  opacity: 0;
+  position: absolute;
+  transform: translateY(10px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  pointer-events: none;
+}
+
+.memory-caption-item.active {
+  opacity: 1;
+  position: relative;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Interactive photo indicator */
+.photo-interactive-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 77, 141, 0.15);
+  border: 1px solid rgba(255, 77, 141, 0.4);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: #ff9bbb;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 8px;
+}
+
+/* Scene 4: Romantic Love Messages */
+#scene-messages {
+  padding-bottom: 90px;
+}
+
+.message-card {
+  max-width: 620px;
+  width: 100%;
+  min-height: 230px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  border-color: rgba(255, 77, 141, 0.45);
+  box-shadow: 0 16px 45px rgba(255, 77, 141, 0.2);
+}
+
+.heart-click-prompt {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-rose-soft);
+  letter-spacing: 1.5px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: pulse-soft 1.8s infinite;
+}
+
+.quote-icon {
+  font-size: 2rem;
+  color: var(--color-gold);
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.love-message-text {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  line-height: 1.7;
+  color: #fff;
+  margin: 12px 0 18px 0;
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.4s ease;
+}
+
+.message-counter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--color-gold-glow);
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.message-dots {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.message-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.message-dot.active {
+  background: var(--color-rose);
+  transform: scale(1.3);
+  box-shadow: var(--glow-pink);
+}
+
+/* Scene 5: The Special Gift */
+#scene-gift {
+  padding-bottom: 90px;
+}
+
+.gift-intro {
+  margin-bottom: 25px;
+}
+
+/* Modal letter when gift opens */
+.gift-letter-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 3, 14, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+
+.gift-letter-modal.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.parchment-letter {
+  background: linear-gradient(135deg, rgba(35, 20, 55, 0.95), rgba(18, 11, 35, 0.95));
+  border: 2px solid rgba(251, 191, 36, 0.45);
+  border-radius: 28px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(251, 191, 36, 0.35);
+  max-width: 620px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 40px 38px;
+  position: relative;
+  text-align: left;
+  transform: scale(0.9) translateY(20px);
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.gift-letter-modal.open .parchment-letter {
+  transform: scale(1) translateY(0);
+}
+
+.letter-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.letter-close-btn:hover {
+  background: var(--color-rose);
+  border-color: var(--color-rose);
+  transform: rotate(90deg);
+}
+
+.letter-salutation {
+  font-family: var(--font-script);
+  font-size: 2.5rem;
+  color: var(--color-rose-soft);
+  margin-bottom: 16px;
+}
+
+.letter-body {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  line-height: 1.85;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.letter-body p {
+  margin-bottom: 16px;
+}
+
+.letter-signature {
+  margin-top: 24px;
+  text-align: right;
+  font-family: var(--font-script);
+  font-size: 2.2rem;
+  color: var(--color-gold-light);
+  text-shadow: var(--glow-gold);
+}
+
+/* Scene 6: Final Birthday Wish */
+#scene-final {
+  padding-bottom: 100px;
+}
+
+.final-card {
+  max-width: 680px;
+  border-color: rgba(251, 191, 36, 0.4);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 35px rgba(251, 191, 36, 0.25);
+}
+
+.final-wish-body {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 16px 0 20px 0;
+}
+
+.final-wish-body p {
+  margin-bottom: 14px;
+}
+
+.final-signature-block {
+  font-family: var(--font-script);
+  font-size: 2.2rem;
+  color: var(--color-rose-soft);
+  text-shadow: var(--glow-pink);
+  margin: 18px 0 24px 0;
+}
+
+/* ==========================================================================
+   Navigation Bar & Controls
+   ========================================================================== */
+
+/* Top Right Audio Control Widget */
+#audio-control-widget {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(18, 12, 36, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 40px;
+  padding: 8px 18px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+  transition: all 0.3s ease;
+}
+
+#audio-control-widget:hover {
+  border-color: var(--color-rose-soft);
+  box-shadow: var(--glow-pink);
+}
+
+.audio-track-info {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.audio-track-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.audio-track-sub {
+  font-size: 0.7rem;
+  color: var(--color-rose-soft);
+}
+
+.audio-equalizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+  padding: 0 2px;
+}
+
+.audio-equalizer .bar {
+  width: 3px;
+  background: linear-gradient(to top, var(--color-rose), var(--color-gold));
+  border-radius: 2px;
+  height: 4px;
+  transition: height 0.2s ease;
+}
+
+.audio-equalizer.playing .bar:nth-child(1) { animation: eq 0.8s ease-in-out infinite alternate; }
+.audio-equalizer.playing .bar:nth-child(2) { animation: eq 0.6s ease-in-out infinite alternate 0.2s; }
+.audio-equalizer.playing .bar:nth-child(3) { animation: eq 0.9s ease-in-out infinite alternate 0.4s; }
+.audio-equalizer.playing .bar:nth-child(4) { animation: eq 0.7s ease-in-out infinite alternate 0.1s; }
+
+@keyframes eq {
+  0% { height: 3px; }
+  100% { height: 16px; }
+}
+
+.audio-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.audio-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--color-gold);
+  transform: scale(1.1);
+}
+
+/* Bottom Scene Navigation Bar */
+#scene-nav-bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(18, 12, 36, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50px;
+  padding: 6px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  max-width: 95vw;
+  overflow-x: auto;
+}
+
+.nav-item-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 30px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.nav-item-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-item-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.8), rgba(234, 179, 8, 0.8));
+  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+}
+
+/* Arrow controls floating at sides */
+.scene-step-arrow {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 45;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(20, 14, 40, 0.65);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  pointer-events: auto;
+}
+
+.scene-step-arrow:hover {
+  background: rgba(236, 72, 153, 0.8);
+  border-color: var(--color-rose-soft);
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: var(--glow-pink);
+}
+
+.scene-step-arrow.prev {
+  left: 20px;
+}
+
+.scene-step-arrow.next {
+  right: 20px;
+}
+
+.scene-step-arrow.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .display-title {
+    font-size: 2rem;
+    letter-spacing: 1px;
+  }
+  
+  .script-tag {
+    font-size: 1.8rem;
+  }
+  
+  .serif-subtitle {
+    font-size: 1.05rem;
+  }
+  
+  .glass-panel {
+    padding: 24px 20px;
+    border-radius: 20px;
+  }
+  
+  .magic-btn {
+    padding: 14px 28px;
+    font-size: 0.95rem;
+    letter-spacing: 1.2px;
+  }
+  
+  .love-message-text {
+    font-size: 1.15rem;
+    min-height: 80px;
+  }
+  
+  .parchment-letter {
+    padding: 28px 22px;
+  }
+  
+  .letter-salutation {
+    font-size: 2rem;
+  }
+  
+  .letter-body {
+    font-size: 1.02rem;
+    line-height: 1.7;
+  }
+  
+  #audio-control-widget {
+    top: 12px;
+    right: 12px;
+    padding: 6px 12px;
+  }
+  
+  .audio-track-info {
+    display: none;
+  }
+  
+  #scene-nav-bar {
+    bottom: 12px;
+    padding: 4px 8px;
+    gap: 4px;
+  }
+  
+  .nav-item-btn {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+  }
+  
+  .nav-item-btn span.label {
+    display: none;
+  }
+  
+  .scene-step-arrow {
+    width: 38px;
+    height: 38px;
+    font-size: 1rem;
+  }
+  
+  .scene-step-arrow.prev { left: 8px; }
+  .scene-step-arrow.next { right: 8px; }
+}
+
+@media (max-width: 480px) {
+  .display-title {
+    font-size: 1.7rem;
+  }
+  
+  .script-tag {
+    font-size: 1.5rem;
+  }
+}

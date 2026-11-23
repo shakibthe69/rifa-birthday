@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Happy Birthday, Rifa Jahan! ❤️</title>
+  <meta name="description" content="A magical, romantic 3D birthday surprise website dedicated to Rifa Jahan, created with love by Shakib Ahmed.">
+
+  <!-- OpenGraph / Social Sharing -->
+  <meta property="og:title" content="Happy Birthday, Rifa Jahan! ❤️">
+  <meta property="og:description" content="To the girl who makes ordinary moments feel extraordinary. Created with love by Shakib Ahmed.">
+  <meta property="og:image" content="assets/images/rifa-portrait.jpg">
+  <meta property="og:type" content="website">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💖</text></svg>">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <!-- Background Photo Overlay (Photograph 1 with dark romantic mood) -->
+  <div id="bg-photo-overlay" aria-hidden="true"></div>
+
+  <!-- WebGL 3D Canvas -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- Canvas Confetti Overlay -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Background Birthday Music Audio -->
+  <audio id="birthday-audio" preload="auto">
+    <source src="assets/music/birthday-song.mpeg" type="audio/mpeg">
+    <source src="assets/music/birthday-song.mp3" type="audio/mp3">
+  </audio>
+
+  <!-- Top Right Music Player Widget -->
+  <header id="audio-control-widget" role="region" aria-label="Music Controls">
+    <div class="audio-equalizer" id="audio-equalizer" aria-hidden="true">
+      <span class="bar"></span>
+      <span class="bar"></span>
+      <span class="bar"></span>
+      <span class="bar"></span>
+    </div>
+    <div class="audio-track-info">
+      <span class="audio-track-title">Birthday Song</span>
+      <span class="audio-track-sub">For Rifa Jahan ❤️</span>
+    </div>
+    <button id="audio-play-pause-btn" class="audio-btn" title="Play / Pause Music" aria-label="Toggle playback">▶</button>
+    <button id="audio-mute-btn" class="audio-btn" title="Mute / Unmute" aria-label="Toggle mute">🔊</button>
+  </header>
+
+  <!-- Floating Step Arrows -->
+  <button id="arrow-prev" class="scene-step-arrow prev hidden" title="Previous Scene" aria-label="Previous scene">‹</button>
+  <button id="arrow-next" class="scene-step-arrow next" title="Next Scene" aria-label="Next scene">›</button>
+
+  <!-- Main UI App Container -->
+  <main id="app">
+
+    <!-- ====================================================================
+         Scene 1: The Magical Entrance Room
+         ==================================================================== -->
+    <section id="scene-entrance" class="scene active" aria-label="Magical Entrance">
+      <div class="glass-panel entrance-card">
+        <span class="script-tag">For Someone Very Special</span>
+        <h1 class="display-title">Someone Special Is Waiting For You...</h1>
+        <p class="serif-subtitle">A little surprise has been created just for you.</p>
+        
+        <button id="enter-surprise-btn" class="magic-btn" aria-label="Enter Your Surprise">
+          <span>ENTER YOUR SURPRISE ✨</span>
+        </button>
+
+        <div class="door-hint">
+          <span>Tap to unlock the magical door</span>
+        </div>
+
+        <p class="author-from">With all my love, Shakib Ahmed ❤️</p>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         Scene 2: Infinite Birthday Balloon Celebration
+         ==================================================================== -->
+    <section id="scene-celebration" class="scene" aria-label="Birthday Celebration">
+      <div class="celebration-header">
+        <span class="script-tag">Today, the universe celebrates you</span>
+        <h1 class="display-title">HAPPY BIRTHDAY RIFA! ❤️</h1>
+        <p class="serif-subtitle">"To the girl who makes ordinary moments feel extraordinary."</p>
+      </div>
+
+      <div class="celebration-footer">
+        <div class="celebration-cake-hint" style="margin-bottom: 16px;">
+          🎂 Make a wish upon the glowing candles
+        </div>
+        <button id="celebration-next-btn" class="magic-btn">
+          <span>EXPLORE OUR MEMORIES 📸</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         Scene 3: Our Special Memories
+         ==================================================================== -->
+    <section id="scene-memories" class="scene" aria-label="Special Memories">
+      <div class="memories-container">
+        <div class="memories-header">
+          <span class="script-tag">Timeless Moments</span>
+          <h2 class="display-title">Every Picture Holds a Little Piece of Happiness.</h2>
+          <div class="photo-interactive-badge">✨ Interactive 3D Photo Frame</div>
+        </div>
+
+        <div class="memory-captions-carousel">
+          <p class="memory-caption-item active">
+            "Some people make life more beautiful just by being in it."
+          </p>
+          <p class="memory-caption-item">
+            "Every moment is special when it becomes a memory."
+          </p>
+          <p class="memory-caption-item">
+            "Among millions of moments, some memories become priceless."
+          </p>
+        </div>
+
+        <button id="memories-next-btn" class="magic-btn" style="margin-top: 15px;">
+          <span>READ MY MESSAGES 💌</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         Scene 4: Romantic Love Messages
+         ==================================================================== -->
+    <section id="scene-messages" class="scene" aria-label="Romantic Love Messages">
+      <div class="glass-panel message-card" id="love-message-card">
+        <div class="heart-click-prompt">
+          <span>💖 Tap the 3D heart to reveal a message</span>
+        </div>
+
+        <span class="quote-icon">“</span>
+        <p id="love-message-text" class="love-message-text">
+          Loading message...
+        </p>
+        <span class="quote-icon" style="transform: rotate(180deg);">“</span>
+
+        <div class="message-counter" id="message-counter-text">Message 1 of 6</div>
+        <div class="message-dots" id="message-dots-container"></div>
+      </div>
+
+      <button id="messages-next-btn" class="magic-btn" style="margin-top: 24px;">
+        <span>OPEN YOUR SURPRISE GIFT 🎁</span>
+      </button>
+    </section>
+
+    <!-- ====================================================================
+         Scene 5: The Special Gift
+         ==================================================================== -->
+    <section id="scene-gift" class="scene" aria-label="Special Birthday Gift">
+      <div class="glass-panel" style="max-width: 580px;">
+        <span class="script-tag">One More Surprise</span>
+        <h2 class="display-title" style="font-size: 2.2rem;">Rifa, I have one more surprise for you...</h2>
+        <p class="serif-subtitle" style="margin-bottom: 24px;">
+          A golden treasure box wrapped with ribbons and heartfelt blessings.
+        </p>
+
+        <button id="open-gift-btn" class="magic-btn">
+          <span>OPEN YOUR GIFT 🎁</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         Scene 6: Final Birthday Wish
+         ==================================================================== -->
+    <section id="scene-final" class="scene" aria-label="Final Birthday Wish">
+      <div class="glass-panel final-card">
+        <span class="script-tag">With All My Heart</span>
+        <h2 class="display-title">HAPPY BIRTHDAY, MY SPECIAL RIFA! ❤️</h2>
+        <p class="serif-subtitle">"To the girl who makes ordinary moments feel extraordinary."</p>
+
+        <div class="final-wish-body">
+          <p>
+            May this new chapter of your life bring you more happiness than you ever imagined.
+          </p>
+          <p>
+            May you achieve every dream, overcome every challenge, and always find reasons to smile.
+          </p>
+          <p>
+            Today is your day. Enjoy every second of it.
+          </p>
+          <p>
+            You deserve the world and all its beautiful moments.
+          </p>
+        </div>
+
+        <div class="final-signature-block">
+          Forever wishing you happiness,<br>
+          Shakib Ahmed ❤️
+        </div>
+
+        <button id="replay-magic-btn" class="magic-btn">
+          <span>REPLAY OUR LITTLE MAGIC ✨</span>
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Gift Letter Modal (Opens from Scene 5) -->
+  <div id="gift-letter-modal" class="gift-letter-modal" role="dialog" aria-modal="true" aria-label="A Letter for Rifa">
+    <div class="parchment-letter">
+      <button id="letter-close-btn" class="letter-close-btn" aria-label="Close letter">✕</button>
+
+      <div class="letter-salutation">Dear Rifa,</div>
+
+      <div class="letter-body">
+        <p>
+          On your special day, I wish you endless happiness, good health, success, and peace.
+        </p>
+        <p>
+          May every dream you carry in your heart find its way into reality.
+        </p>
+        <p>
+          Keep smiling, keep shining, and never stop being the wonderful person you are.
+        </p>
+        <p>
+          Thank you for being such a special part of my life.
+        </p>
+        <p style="font-weight: 600; color: #fde047; font-size: 1.25rem; margin-top: 20px;">
+          Happy Birthday, Rifa Jahan!
+        </p>
+      </div>
+
+      <div class="letter-signature">
+        With love,<br>
+        Shakib Ahmed ❤️
+      </div>
+
+      <div style="text-align: center; margin-top: 28px;">
+        <button id="proceed-to-final-btn" class="magic-btn">
+          <span>OUR FINAL WISH 💖</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Scene Navigation Bar -->
+  <nav id="scene-nav-bar" aria-label="Experience scenes">
+    <button class="nav-item-btn active" data-scene="0" aria-label="Scene 1 Entrance">
+      <span>✨</span><span class="label">Entrance</span>
+    </button>
+    <button class="nav-item-btn" data-scene="1" aria-label="Scene 2 Celebration">
+      <span>🎈</span><span class="label">Celebration</span>
+    </button>
+    <button class="nav-item-btn" data-scene="2" aria-label="Scene 3 Memories">
+      <span>📸</span><span class="label">Memories</span>
+    </button>
+    <button class="nav-item-btn" data-scene="3" aria-label="Scene 4 Love Messages">
+      <span>💌</span><span class="label">Messages</span>
+    </button>
+    <button class="nav-item-btn" data-scene="4" aria-label="Scene 5 Special Gift">
+      <span>🎁</span><span class="label">Gift</span>
+    </button>
+    <button class="nav-item-btn" data-scene="5" aria-label="Scene 6 Final Wish">
+      <span>💖</span><span class="label">Wish</span>
+    </button>
+  </nav>
+
+  <!-- Local Vendor Scripts -->
+  <script src="assets/js/three.min.js"></script>
+  <script src="assets/js/gsap.min.js"></script>
+  <script src="assets/js/confetti.browser.min.js"></script>
+
+  <!-- Application Logic -->
+  <script src="assets/js/three-world.js"></script>
+  <script src="assets/js/main.js"></script>
+
+</body>
+</html>
