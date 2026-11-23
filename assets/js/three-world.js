@@ -7,9 +7,10 @@ const ThreeWorld = (function () {
   let container, canvas;
   let scene, camera, renderer;
   let ambientLight, mainLight, pinkPointLight, goldPointLight;
-  let starField, starGeometry, starColors;
+  let starField, starGeometry;
   let floatingHeartsSystem;
   let fireworks = [];
+  let burstHeartParticles = [];
   
   // Scene-specific groups
   let entranceGroup;
@@ -21,11 +22,13 @@ const ThreeWorld = (function () {
   
   // Interactive 3D Objects
   let doorLeft, doorRight, doorLight, doorSparks;
+  let isDoorOpened = false;
   let balloons = [];
   let cakeGroup, candleFlameLight, candleFlames = [];
-  let portraitMesh, bgPhotoMesh;
+  let portraitMesh, bgPhotoMesh, mainFrameGroup, secFrameGroup;
   let pulsingHeartMesh, heartHaloLight;
   let giftBoxLid, giftBoxRibbon, giftInteriorLight, giftBurstParticles;
+  let isGiftOpened = false;
   let finalPortrait1, finalPortrait2;
 
   let currentSceneIndex = 0;
@@ -39,7 +42,7 @@ const ThreeWorld = (function () {
   let rifaPortraitTexture = null;
   let bgPhotoTexture = null;
 
-  function init(canvasId) {
+  function init(canvasId, onProgress, onLoaded) {
     canvas = document.getElementById(canvasId);
     container = canvas.parentElement;
 
@@ -48,10 +51,11 @@ const ThreeWorld = (function () {
 
     // 1. Scene & Camera
     scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x080514, 0.025);
+    scene.fog = new THREE.FogExp2(0x080514, 0.024);
 
-    camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
-    camera.position.set(0, 0, 18);
+    const isMobile = width < 768;
+    camera = new THREE.PerspectiveCamera(isMobile ? 58 : 48, width / height, 0.1, 1000);
+    camera.position.set(0, 0, isMobile ? 21 : 18);
 
     // 2. Renderer
     renderer = new THREE.WebGLRenderer({
@@ -63,10 +67,10 @@ const ThreeWorld = (function () {
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMappingExposure = 1.25;
 
     // 3. Load Textures
-    loadAssets();
+    loadAssets(onProgress, onLoaded);
 
     // 4. Lighting
     setupLighting();
@@ -96,7 +100,18 @@ const ThreeWorld = (function () {
     animate();
   }
 
-  function loadAssets() {
+  function loadAssets(onProgress, onLoaded) {
+    let loadedCount = 0;
+    const totalAssets = 2;
+
+    function checkDone() {
+      loadedCount++;
+      if (onProgress) onProgress(Math.floor((loadedCount / totalAssets) * 100));
+      if (loadedCount >= totalAssets && onLoaded) {
+        onLoaded();
+      }
+    }
+
     textureLoader.load(
       'assets/images/rifa-portrait.jpg',
       function (tex) {
@@ -104,10 +119,12 @@ const ThreeWorld = (function () {
         tex.generateMipmaps = true;
         rifaPortraitTexture = tex;
         updatePhotoTextures();
+        checkDone();
       },
       undefined,
       function (err) {
         console.warn('Portrait texture load fallback:', err);
+        checkDone();
       }
     );
 
@@ -118,10 +135,12 @@ const ThreeWorld = (function () {
         tex.generateMipmaps = true;
         bgPhotoTexture = tex;
         updatePhotoTextures();
+        checkDone();
       },
       undefined,
       function (err) {
         console.warn('Background texture load fallback:', err);
+        checkDone();
       }
     );
   }
@@ -149,15 +168,15 @@ const ThreeWorld = (function () {
     ambientLight = new THREE.AmbientLight(0x231745, 1.4);
     scene.add(ambientLight);
 
-    mainLight = new THREE.DirectionalLight(0xfffaed, 1.8);
+    mainLight = new THREE.DirectionalLight(0xfffaed, 1.9);
     mainLight.position.set(5, 10, 8);
     scene.add(mainLight);
 
-    pinkPointLight = new THREE.PointLight(0xff4d8d, 2.5, 30);
+    pinkPointLight = new THREE.PointLight(0xff4d8d, 2.6, 35);
     pinkPointLight.position.set(-6, 3, 5);
     scene.add(pinkPointLight);
 
-    goldPointLight = new THREE.PointLight(0xfbbf24, 2.2, 30);
+    goldPointLight = new THREE.PointLight(0xfbbf24, 2.4, 35);
     goldPointLight.position.set(6, -2, 6);
     scene.add(goldPointLight);
   }
@@ -167,7 +186,7 @@ const ThreeWorld = (function () {
   // ==========================================================================
 
   function createStarfield() {
-    const starCount = 1200;
+    const starCount = 1400;
     starGeometry = new THREE.BufferGeometry();
     const positions = new Float32Array(starCount * 3);
     const colors = new Float32Array(starCount * 3);
@@ -180,9 +199,9 @@ const ThreeWorld = (function () {
     ];
 
     for (let i = 0; i < starCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 120;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 100;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 80 - 10;
+      positions[i * 3] = (Math.random() - 0.5) * 130;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 110;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 90 - 15;
 
       const col = palette[Math.floor(Math.random() * palette.length)];
       colors[i * 3] = col.r;
@@ -193,7 +212,6 @@ const ThreeWorld = (function () {
     starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     starGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    // Particle texture (soft circular glow)
     const canvasPoint = document.createElement('canvas');
     canvasPoint.width = 32;
     canvasPoint.height = 32;
@@ -208,7 +226,7 @@ const ThreeWorld = (function () {
     const starTexture = new THREE.CanvasTexture(canvasPoint);
 
     const starMaterial = new THREE.PointsMaterial({
-      size: 1.2,
+      size: 1.25,
       map: starTexture,
       transparent: true,
       vertexColors: true,
@@ -221,7 +239,7 @@ const ThreeWorld = (function () {
   }
 
   function createFloatingHearts() {
-    const heartCount = 45;
+    const heartCount = 50;
     const heartShape = getHeartShape2D();
     const extrudeSettings = { depth: 0.1, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.05, bevelThickness: 0.05 };
     const heartGeo = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
@@ -233,7 +251,7 @@ const ThreeWorld = (function () {
       metalness: 0.65,
       emissive: 0x550a22,
       transparent: true,
-      opacity: 0.75
+      opacity: 0.8
     });
 
     floatingHeartsSystem = new THREE.Group();
@@ -241,11 +259,11 @@ const ThreeWorld = (function () {
     for (let i = 0; i < heartCount; i++) {
       const mesh = new THREE.Mesh(heartGeo, heartMat.clone());
       mesh.position.set(
-        (Math.random() - 0.5) * 35,
-        (Math.random() - 0.5) * 30,
-        (Math.random() - 0.5) * 20 - 5
+        (Math.random() - 0.5) * 38,
+        (Math.random() - 0.5) * 32,
+        (Math.random() - 0.5) * 22 - 6
       );
-      mesh.rotation.z = Math.PI; // Heart orientation
+      mesh.rotation.z = Math.PI;
       mesh.rotation.y = Math.random() * Math.PI;
       mesh.userData = {
         speedY: 0.015 + Math.random() * 0.025,
@@ -274,14 +292,13 @@ const ThreeWorld = (function () {
   }
 
   // ==========================================================================
-  // Scene 1: The Magical Entrance Room
+  // Scene 1: The Magical Entrance Room & Glowing Flowers
   // ==========================================================================
 
   function buildEntranceScene() {
     entranceGroup = new THREE.Group();
     entranceGroup.position.set(0, 0, 0);
 
-    // Ornate Golden Archway Frame
     const goldMat = new THREE.MeshStandardMaterial({
       color: 0xf59e0b,
       metalness: 0.88,
@@ -329,49 +346,55 @@ const ThreeWorld = (function () {
 
     // Left Door Pivot Group
     doorLeft = new THREE.Group();
-    doorLeft.position.set(-doorWidth, 0, 0); // Hinge position
+    doorLeft.position.set(-doorWidth, 0, 0);
     const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(doorWidth, doorHeight, doorThickness), doorMat);
-    leftPanel.position.set(doorWidth / 2, 0, 0); // offset center from hinge
+    leftPanel.position.set(doorWidth / 2, 0, 0);
+    leftPanel.userData = { isDoor: true };
     
-    // Left Door Gold Trim
     const trimGeo = new THREE.BoxGeometry(doorWidth * 0.75, doorHeight * 0.8, 0.05);
     const trimMeshL = new THREE.Mesh(trimGeo, goldMat);
     trimMeshL.position.set(doorWidth / 2, 0, doorThickness / 2 + 0.03);
+    trimMeshL.userData = { isDoor: true };
     doorLeft.add(leftPanel);
     doorLeft.add(trimMeshL);
 
-    // Left Handle
     const handleL = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), goldMat);
     handleL.position.set(doorWidth * 0.85, 0, doorThickness / 2 + 0.15);
+    handleL.userData = { isDoor: true };
     doorLeft.add(handleL);
 
     entranceGroup.add(doorLeft);
 
     // Right Door Pivot Group
     doorRight = new THREE.Group();
-    doorRight.position.set(doorWidth, 0, 0); // Hinge position
+    doorRight.position.set(doorWidth, 0, 0);
     const rightPanel = new THREE.Mesh(new THREE.BoxGeometry(doorWidth, doorHeight, doorThickness), doorMat);
-    rightPanel.position.set(-doorWidth / 2, 0, 0); // offset center from hinge
+    rightPanel.position.set(-doorWidth / 2, 0, 0);
+    rightPanel.userData = { isDoor: true };
 
-    // Right Door Gold Trim
     const trimMeshR = new THREE.Mesh(trimGeo, goldMat);
     trimMeshR.position.set(-doorWidth / 2, 0, doorThickness / 2 + 0.03);
+    trimMeshR.userData = { isDoor: true };
     doorRight.add(rightPanel);
     doorRight.add(trimMeshR);
 
-    // Right Handle
     const handleR = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), goldMat);
     handleR.position.set(-doorWidth * 0.85, 0, doorThickness / 2 + 0.15);
+    handleR.userData = { isDoor: true };
     doorRight.add(handleR);
 
     entranceGroup.add(doorRight);
+
+    // Beautiful Glowing Flowers along the pillars
+    addGlowingFlowers(entranceGroup, -doorFrameW / 2, doorFrameH);
+    addGlowingFlowers(entranceGroup, doorFrameW / 2, doorFrameH);
 
     // Light glowing from inside the door doorway
     doorLight = new THREE.PointLight(0xffdf80, 0, 25);
     doorLight.position.set(0, 0, -2);
     entranceGroup.add(doorLight);
 
-    // Golden sparks / fairy dust around entrance
+    // Golden sparks around entrance
     const sparkGeo = new THREE.BufferGeometry();
     const sparkPos = new Float32Array(250 * 3);
     for (let i = 0; i < 250; i++) {
@@ -393,28 +416,64 @@ const ThreeWorld = (function () {
     scene.add(entranceGroup);
   }
 
+  function addGlowingFlowers(parentGroup, posX, height) {
+    const flowerGroup = new THREE.Group();
+    const flowerColors = [0xff4d8d, 0xfbbf24, 0xf472b6, 0xa855f7];
+    const flowerCount = 6;
+
+    for (let i = 0; i < flowerCount; i++) {
+      const fMesh = new THREE.Group();
+      const col = flowerColors[i % flowerColors.length];
+      const petalMat = new THREE.MeshStandardMaterial({
+        color: col,
+        emissive: col,
+        emissiveIntensity: 0.6,
+        roughness: 0.3
+      });
+
+      // 5 petals
+      for (let p = 0; p < 5; p++) {
+        const petalGeo = new THREE.SphereGeometry(0.12, 12, 12);
+        petalGeo.scale(1, 1.8, 0.4);
+        const petal = new THREE.Mesh(petalGeo, petalMat);
+        const ang = (p / 5) * Math.PI * 2;
+        petal.position.set(Math.cos(ang) * 0.16, Math.sin(ang) * 0.16, 0);
+        petal.rotation.z = ang;
+        fMesh.add(petal);
+      }
+
+      // Center pistil
+      const centerGeo = new THREE.SphereGeometry(0.09, 12, 12);
+      const centerMat = new THREE.MeshBasicMaterial({ color: 0xfff08a });
+      const center = new THREE.Mesh(centerGeo, centerMat);
+      fMesh.add(center);
+
+      const yOffset = -height / 2 + 0.8 + i * 1.1;
+      const xOffset = posX + (posX > 0 ? 0.35 : -0.35);
+      fMesh.position.set(xOffset, yOffset, 0.2);
+      fMesh.rotation.z = Math.random() * Math.PI;
+      flowerGroup.add(fMesh);
+    }
+
+    parentGroup.add(flowerGroup);
+  }
+
   // ==========================================================================
   // Scene 2: Infinite Birthday Balloon Celebration & Animated 3D Cake
   // ==========================================================================
 
   function buildCelebrationScene() {
     celebrationGroup = new THREE.Group();
-    celebrationGroup.position.set(0, 0, -40); // Initial scene offset
+    celebrationGroup.position.set(0, 0, -40);
 
     // 1. Hundreds of 3D Balloons
-    const balloonCount = 140;
+    const balloonCount = 150;
     const balloonColors = [
-      0xff3377, // Vibrant Pink
-      0xf472b6, // Soft Rose
-      0xa855f7, // Lavender Purple
-      0xf59e0b, // Radiant Gold
-      0xef4444, // Ruby Red
-      0xffffff, // Pearl White
-      0xfb7185  // Peach Pink
+      0xff3377, 0xf472b6, 0xa855f7, 0xf59e0b, 0xef4444, 0xffffff, 0xfb7185
     ];
 
     const sphereGeo = new THREE.SphereGeometry(0.85, 24, 24);
-    sphereGeo.scale(1, 1.25, 1); // Balloon oval shape
+    sphereGeo.scale(1, 1.25, 1);
     const knotGeo = new THREE.ConeGeometry(0.16, 0.22, 12);
     knotGeo.rotateX(Math.PI);
 
@@ -438,7 +497,6 @@ const ThreeWorld = (function () {
       bKnot.position.set(0, -1.15, 0);
       bGroup.add(bKnot);
 
-      // Balloon string
       const stringCurve = new THREE.LineCurve3(
         new THREE.Vector3(0, -1.25, 0),
         new THREE.Vector3(0.1, -3.2, 0)
@@ -448,12 +506,11 @@ const ThreeWorld = (function () {
       const bString = new THREE.Line(stringGeo, stringMat);
       bGroup.add(bString);
 
-      // Random scale and positioning
       const scale = 0.65 + Math.random() * 0.75;
       bGroup.scale.set(scale, scale, scale);
 
       bGroup.position.set(
-        (Math.random() - 0.5) * 32,
+        (Math.random() - 0.5) * 34,
         -18 + Math.random() * 36,
         (Math.random() - 0.5) * 22
       );
@@ -471,12 +528,11 @@ const ThreeWorld = (function () {
       celebrationGroup.add(bGroup);
     }
 
-    // 2. Beautiful Animated 3D Cake
+    // 2. Animated 3D Cake
     cakeGroup = new THREE.Group();
     cakeGroup.position.set(0, -3.8, 2);
     cakeGroup.scale.set(1.1, 1.1, 1.1);
 
-    // Cake Stand
     const standMat = new THREE.MeshStandardMaterial({
       color: 0xf59e0b,
       metalness: 0.9,
@@ -484,25 +540,27 @@ const ThreeWorld = (function () {
     });
     const standBase = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.2, 0.35, 32), standMat);
     standBase.position.y = -0.18;
+    standBase.userData = { isCake: true };
     cakeGroup.add(standBase);
 
-    // Cake Tier 1 (Bottom)
+    // Cake Tier 1
     const cakeMat1 = new THREE.MeshStandardMaterial({ color: 0xfff0f5, roughness: 0.4, metalness: 0.1 });
     const tier1 = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 1.2, 36), cakeMat1);
     tier1.position.y = 0.6;
+    tier1.userData = { isCake: true };
     cakeGroup.add(tier1);
 
-    // Tier 1 Frosting Trim
     const trimMat = new THREE.MeshStandardMaterial({ color: 0xff4d8d, roughness: 0.3, metalness: 0.3 });
     const trim1 = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.12, 16, 40), trimMat);
     trim1.rotation.x = Math.PI / 2;
     trim1.position.y = 1.2;
     cakeGroup.add(trim1);
 
-    // Cake Tier 2 (Middle)
+    // Cake Tier 2
     const cakeMat2 = new THREE.MeshStandardMaterial({ color: 0xfce7f3, roughness: 0.4, metalness: 0.1 });
     const tier2 = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 1.0, 36), cakeMat2);
     tier2.position.y = 1.7;
+    tier2.userData = { isCake: true };
     cakeGroup.add(tier2);
 
     const trim2 = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.1, 16, 40), standMat);
@@ -510,10 +568,11 @@ const ThreeWorld = (function () {
     trim2.position.y = 2.2;
     cakeGroup.add(trim2);
 
-    // Cake Tier 3 (Top)
+    // Cake Tier 3
     const cakeMat3 = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.1 });
     const tier3 = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.8, 32), cakeMat3);
     tier3.position.y = 2.6;
+    tier3.userData = { isCake: true };
     cakeGroup.add(tier3);
 
     // Birthday Candles
@@ -536,7 +595,6 @@ const ThreeWorld = (function () {
       candleFlames.push(flame);
     }
 
-    // Candle Flicker Light
     candleFlameLight = new THREE.PointLight(0xffa500, 2.8, 8);
     candleFlameLight.position.set(0, 4.2, 0);
     cakeGroup.add(candleFlameLight);
@@ -546,16 +604,15 @@ const ThreeWorld = (function () {
   }
 
   // ==========================================================================
-  // Scene 3: Our Special Memories (3D Floating Photo Frames)
+  // Scene 3: Our Special Memories
   // ==========================================================================
 
   function buildMemoriesScene() {
     memoriesGroup = new THREE.Group();
     memoriesGroup.position.set(0, 0, -80);
 
-    // Main 3D Photo Frame for Rifa Portrait (Photograph 2: 389x755)
     const frameW = 3.6;
-    const frameH = 7.0; // matched to aspect ratio ~ 1 : 1.94
+    const frameH = 7.0;
     const borderThickness = 0.28;
 
     const goldFrameMat = new THREE.MeshStandardMaterial({
@@ -565,9 +622,8 @@ const ThreeWorld = (function () {
       emissive: 0x3d2000
     });
 
-    const mainFrameGroup = new THREE.Group();
+    mainFrameGroup = new THREE.Group();
 
-    // Outer Frame Borders
     const topBorder = new THREE.Mesh(new THREE.BoxGeometry(frameW + borderThickness * 2, borderThickness, 0.3), goldFrameMat);
     topBorder.position.y = frameH / 2 + borderThickness / 2;
     mainFrameGroup.add(topBorder);
@@ -584,23 +640,18 @@ const ThreeWorld = (function () {
     rightBorder.position.x = frameW / 2 + borderThickness / 2;
     mainFrameGroup.add(rightBorder);
 
-    // Photo Plane
     const portraitGeo = new THREE.PlaneGeometry(frameW, frameH);
-    const portraitMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      side: THREE.DoubleSide
-    });
+    const portraitMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
     portraitMesh = new THREE.Mesh(portraitGeo, portraitMat);
+    portraitMesh.userData = { isPortraitPhoto: true };
     mainFrameGroup.add(portraitMesh);
 
-    // Frame Backing
     const backGeo = new THREE.PlaneGeometry(frameW + borderThickness * 2, frameH + borderThickness * 2);
     const backMat = new THREE.MeshStandardMaterial({ color: 0x140a25, roughness: 0.5 });
     const backMesh = new THREE.Mesh(backGeo, backMat);
     backMesh.position.z = -0.16;
     mainFrameGroup.add(backMesh);
 
-    // Soft warm backlight halo
     const frameGlow = new THREE.PointLight(0xff7597, 2.5, 12);
     frameGlow.position.set(0, 0, -1);
     mainFrameGroup.add(frameGlow);
@@ -609,22 +660,17 @@ const ThreeWorld = (function () {
     mainFrameGroup.rotation.y = -0.18;
     memoriesGroup.add(mainFrameGroup);
 
-    // Secondary Photo (Photograph 1: background.jpg, 933x1600)
+    // Secondary Photo (Photograph 1: background.jpg)
     const secW = 3.2;
     const secH = 5.5;
     const bgPhotoGeo = new THREE.PlaneGeometry(secW, secH);
-    const bgPhotoMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.88,
-      side: THREE.DoubleSide
-    });
+    const bgPhotoMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.88, side: THREE.DoubleSide });
     bgPhotoMesh = new THREE.Mesh(bgPhotoGeo, bgPhotoMat);
+    bgPhotoMesh.userData = { isBackgroundPhoto: true };
 
-    const secFrameGroup = new THREE.Group();
+    secFrameGroup = new THREE.Group();
     secFrameGroup.add(bgPhotoMesh);
 
-    // Delicate rose-gold trim around secondary photo
     const roseTrimMat = new THREE.MeshStandardMaterial({ color: 0xff6699, metalness: 0.7, roughness: 0.3 });
     const secTrimTop = new THREE.Mesh(new THREE.BoxGeometry(secW + 0.2, 0.15, 0.15), roseTrimMat);
     secTrimTop.position.y = secH / 2 + 0.07;
@@ -640,6 +686,22 @@ const ThreeWorld = (function () {
     memoriesGroup.add(secFrameGroup);
 
     scene.add(memoriesGroup);
+  }
+
+  function focusPhoto(type) {
+    if (typeof gsap === 'undefined') return;
+
+    if (type === 'portrait') {
+      gsap.to(mainFrameGroup.position, { x: 0, y: 0.3, z: 4, duration: 1.2, ease: 'power2.out' });
+      gsap.to(mainFrameGroup.rotation, { y: 0, duration: 1.2, ease: 'power2.out' });
+      gsap.to(secFrameGroup.position, { x: -4.5, y: -0.6, z: -2, duration: 1.2, ease: 'power2.out' });
+      gsap.to(secFrameGroup.rotation, { y: 0.35, duration: 1.2, ease: 'power2.out' });
+    } else {
+      gsap.to(secFrameGroup.position, { x: 0, y: 0.2, z: 4, duration: 1.2, ease: 'power2.out' });
+      gsap.to(secFrameGroup.rotation, { y: 0, z: 0, duration: 1.2, ease: 'power2.out' });
+      gsap.to(mainFrameGroup.position, { x: 4.5, y: -0.4, z: -2, duration: 1.2, ease: 'power2.out' });
+      gsap.to(mainFrameGroup.rotation, { y: -0.35, duration: 1.2, ease: 'power2.out' });
+    }
   }
 
   // ==========================================================================
@@ -674,17 +736,15 @@ const ThreeWorld = (function () {
 
     pulsingHeartMesh = new THREE.Mesh(heartGeo, heartMat);
     pulsingHeartMesh.scale.set(0.48, 0.48, 0.48);
-    pulsingHeartMesh.rotation.z = Math.PI; // Correct orientation
+    pulsingHeartMesh.rotation.z = Math.PI;
     pulsingHeartMesh.position.set(0, 1.4, 0);
     pulsingHeartMesh.userData = { isHeartButton: true };
     heartGroup.add(pulsingHeartMesh);
 
-    // Light glowing from the heart
     heartHaloLight = new THREE.PointLight(0xff2b75, 4.0, 16);
     heartHaloLight.position.set(0, 1.4, 1.5);
     heartGroup.add(heartHaloLight);
 
-    // Orbiting Fairy Sparkles ring
     const ringGeo = new THREE.BufferGeometry();
     const ringCount = 180;
     const ringPos = new Float32Array(ringCount * 3);
@@ -733,41 +793,40 @@ const ThreeWorld = (function () {
       emissive: 0x44081c
     });
 
-    // Box Base
     const boxBase = new THREE.Mesh(new THREE.BoxGeometry(boxW, boxH, boxD), goldBoxMat);
     boxBase.position.y = -0.5;
     boxBase.userData = { isGiftBox: true };
     giftGroup.add(boxBase);
 
-    // Base Ribbons
     const ribW = 0.65;
     const rib1 = new THREE.Mesh(new THREE.BoxGeometry(ribW, boxH + 0.05, boxD + 0.05), pinkRibbonMat);
     rib1.position.y = -0.5;
+    rib1.userData = { isGiftBox: true };
     giftGroup.add(rib1);
 
     const rib2 = new THREE.Mesh(new THREE.BoxGeometry(boxW + 0.05, boxH + 0.05, ribW), pinkRibbonMat);
     rib2.position.y = -0.5;
+    rib2.userData = { isGiftBox: true };
     giftGroup.add(rib2);
 
-    // Box Lid (Pivoted group for opening)
     giftBoxLid = new THREE.Group();
-    giftBoxLid.position.set(0, boxH / 2 - 0.5, -boxD / 2); // Pivot on back edge
+    giftBoxLid.position.set(0, boxH / 2 - 0.5, -boxD / 2);
 
     const lidMesh = new THREE.Mesh(new THREE.BoxGeometry(boxW + 0.3, 0.7, boxD + 0.3), goldBoxMat);
-    lidMesh.position.set(0, 0.35, boxD / 2); // offset from pivot
+    lidMesh.position.set(0, 0.35, boxD / 2);
     lidMesh.userData = { isGiftBox: true };
     giftBoxLid.add(lidMesh);
 
-    // Lid Ribbons
     const lidRib1 = new THREE.Mesh(new THREE.BoxGeometry(ribW, 0.75, boxD + 0.35), pinkRibbonMat);
     lidRib1.position.set(0, 0.35, boxD / 2);
+    lidRib1.userData = { isGiftBox: true };
     giftBoxLid.add(lidRib1);
 
     const lidRib2 = new THREE.Mesh(new THREE.BoxGeometry(boxW + 0.35, 0.75, ribW), pinkRibbonMat);
     lidRib2.position.set(0, 0.35, boxD / 2);
+    lidRib2.userData = { isGiftBox: true };
     giftBoxLid.add(lidRib2);
 
-    // Ribbon Bow on top
     giftBoxRibbon = new THREE.Group();
     giftBoxRibbon.position.set(0, 0.7, boxD / 2);
 
@@ -775,25 +834,26 @@ const ThreeWorld = (function () {
     const bowL = new THREE.Mesh(loopGeo, pinkRibbonMat);
     bowL.rotation.y = Math.PI / 4;
     bowL.rotation.z = Math.PI / 4;
+    bowL.userData = { isGiftBox: true };
     giftBoxRibbon.add(bowL);
 
     const bowR = new THREE.Mesh(loopGeo, pinkRibbonMat);
     bowR.rotation.y = -Math.PI / 4;
     bowR.rotation.z = -Math.PI / 4;
+    bowR.userData = { isGiftBox: true };
     giftBoxRibbon.add(bowR);
 
     const bowKnot = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), pinkRibbonMat);
+    bowKnot.userData = { isGiftBox: true };
     giftBoxRibbon.add(bowKnot);
 
     giftBoxLid.add(giftBoxRibbon);
     giftGroup.add(giftBoxLid);
 
-    // Glowing beam from inside the gift
     giftInteriorLight = new THREE.PointLight(0xfff08a, 0, 20);
     giftInteriorLight.position.set(0, 0, 0);
     giftGroup.add(giftInteriorLight);
 
-    // Fountain particles that burst out when gift opens
     const burstCount = 200;
     const burstGeo = new THREE.BufferGeometry();
     const burstPositions = new Float32Array(burstCount * 3);
@@ -819,7 +879,7 @@ const ThreeWorld = (function () {
   }
 
   // ==========================================================================
-  // Scene 6: Final Birthday Wish (Starry Night Sky with Both Photos)
+  // Scene 6: Final Birthday Wish
   // ==========================================================================
 
   function buildFinalScene() {
@@ -833,7 +893,6 @@ const ThreeWorld = (function () {
       emissive: 0x452300
     });
 
-    // Frame 1: Photograph 1 (background.jpg)
     const f1Group = new THREE.Group();
     const geo1 = new THREE.PlaneGeometry(2.8, 4.8);
     finalPortrait1 = new THREE.Mesh(geo1, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
@@ -847,7 +906,6 @@ const ThreeWorld = (function () {
     f1Group.rotation.y = 0.25;
     finalGroup.add(f1Group);
 
-    // Frame 2: Photograph 2 (rifa-portrait.jpg)
     const f2Group = new THREE.Group();
     const geo2 = new THREE.PlaneGeometry(2.6, 5.0);
     finalPortrait2 = new THREE.Mesh(geo2, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
@@ -861,7 +919,6 @@ const ThreeWorld = (function () {
     f2Group.rotation.y = -0.25;
     finalGroup.add(f2Group);
 
-    // Warm celebratory center lights
     const finalLight = new THREE.PointLight(0xffa500, 2.5, 25);
     finalLight.position.set(0, 2, 4);
     finalGroup.add(finalLight);
@@ -906,7 +963,7 @@ const ThreeWorld = (function () {
 
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const mat = new THREE.PointsMaterial({
-      size: 0.6,
+      size: 0.65,
       color: col,
       transparent: true,
       opacity: 1,
@@ -936,9 +993,7 @@ const ThreeWorld = (function () {
         positions[j * 3 + 1] += fw.velocities[j].y;
         positions[j * 3 + 2] += fw.velocities[j].z;
 
-        // gravity
         fw.velocities[j].y -= 0.003;
-        // drag
         fw.velocities[j].multiplyScalar(0.97);
       }
       fw.mesh.geometry.attributes.position.needsUpdate = true;
@@ -972,8 +1027,11 @@ const ThreeWorld = (function () {
     currentSceneIndex = index;
     const target = sceneCameraTargets[index];
 
+    const isMobile = window.innerWidth < 768;
+    const targetZ = isMobile ? target.pos.z + 3 : target.pos.z;
+
     if (!animate || typeof gsap === 'undefined') {
-      camera.position.copy(target.pos);
+      camera.position.set(target.pos.x, target.pos.y, targetZ);
       camera.lookAt(target.lookAt);
       return;
     }
@@ -981,27 +1039,30 @@ const ThreeWorld = (function () {
     gsap.to(camera.position, {
       x: target.pos.x,
       y: target.pos.y,
-      z: target.pos.z,
+      z: targetZ,
       duration: 1.8,
       ease: 'power3.inOut'
     });
   }
 
-  // Entrance door opening sequence
   function openEntranceDoor(onComplete) {
+    if (isDoorOpened) {
+      goToScene(1, true);
+      if (onComplete) onComplete();
+      return;
+    }
+
+    isDoorOpened = true;
+
     if (typeof gsap === 'undefined') {
       if (onComplete) onComplete();
       return;
     }
 
-    // Door panels swing open
     gsap.to(doorLeft.rotation, { y: -Math.PI * 0.55, duration: 2.0, ease: 'power2.inOut' });
     gsap.to(doorRight.rotation, { y: Math.PI * 0.55, duration: 2.0, ease: 'power2.inOut' });
-
-    // Interior glow bursts
     gsap.to(doorLight, { intensity: 6.0, duration: 1.2, yoyo: true, repeat: 1 });
 
-    // Camera zooms forward through doorway into Celebration scene
     gsap.to(camera.position, {
       z: 0,
       duration: 2.2,
@@ -1013,14 +1074,19 @@ const ThreeWorld = (function () {
     });
   }
 
-  // Gift Box opening sequence
   function openGiftBox(onComplete) {
+    if (isGiftOpened) {
+      if (onComplete) onComplete();
+      return;
+    }
+
+    isGiftOpened = true;
+
     if (typeof gsap === 'undefined') {
       if (onComplete) onComplete();
       return;
     }
 
-    // Ribbon bow flies off
     gsap.to(giftBoxRibbon.position, {
       y: 6,
       duration: 1.2,
@@ -1032,7 +1098,6 @@ const ThreeWorld = (function () {
       ease: 'power2.in'
     });
 
-    // Lid lifts and tilts open
     gsap.to(giftBoxLid.rotation, {
       x: -Math.PI * 0.45,
       duration: 1.6,
@@ -1047,14 +1112,12 @@ const ThreeWorld = (function () {
       ease: 'power2.out'
     });
 
-    // Light beam shoots up
     gsap.to(giftInteriorLight, {
       intensity: 8.0,
       duration: 1.0,
       delay: 0.3
     });
 
-    // Particles burst
     gsap.to(giftBurstParticles.material, {
       opacity: 1,
       duration: 0.5,
@@ -1065,28 +1128,38 @@ const ThreeWorld = (function () {
     });
   }
 
-  // Trigger heart pulse burst
   function pulseHeart() {
     if (!pulsingHeartMesh || typeof gsap === 'undefined') return;
 
     gsap.killTweensOf(pulsingHeartMesh.scale);
     gsap.timeline()
-      .to(pulsingHeartMesh.scale, { x: 0.62, y: 0.62, z: 0.62, duration: 0.15, ease: 'power2.out' })
+      .to(pulsingHeartMesh.scale, { x: 0.64, y: 0.64, z: 0.64, duration: 0.15, ease: 'power2.out' })
       .to(pulsingHeartMesh.scale, { x: 0.44, y: 0.44, z: 0.44, duration: 0.12, ease: 'power2.in' })
-      .to(pulsingHeartMesh.scale, { x: 0.54, y: 0.54, z: 0.54, duration: 0.12, ease: 'power2.out' })
+      .to(pulsingHeartMesh.scale, { x: 0.56, y: 0.56, z: 0.56, duration: 0.12, ease: 'power2.out' })
       .to(pulsingHeartMesh.scale, { x: 0.48, y: 0.48, z: 0.48, duration: 0.2, ease: 'elastic.out(1.2, 0.3)' });
 
-    gsap.to(heartHaloLight, { intensity: 7.0, duration: 0.25, yoyo: true, repeat: 1 });
+    gsap.to(heartHaloLight, { intensity: 7.5, duration: 0.25, yoyo: true, repeat: 1 });
   }
 
-  // Canvas Click Raycasting
   function onCanvasClick(e) {
     mouseCoords.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouseCoords.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
     raycaster.setFromCamera(mouseCoords, camera);
 
-    if (currentSceneIndex === 3 && pulsingHeartMesh) {
+    if (currentSceneIndex === 0 && entranceGroup) {
+      const intersects = raycaster.intersectObjects(entranceGroup.children, true);
+      if (intersects.length > 0) {
+        for (let hit of intersects) {
+          if (hit.object.userData && hit.object.userData.isDoor) {
+            if (window.App && window.App.onDoorClicked) {
+              window.App.onDoorClicked();
+              break;
+            }
+          }
+        }
+      }
+    } else if (currentSceneIndex === 3 && pulsingHeartMesh) {
       const intersects = raycaster.intersectObject(pulsingHeartMesh, true);
       if (intersects.length > 0) {
         pulseHeart();
@@ -1101,12 +1174,16 @@ const ThreeWorld = (function () {
           window.App.onGiftBoxClicked();
         }
       }
+    } else if (currentSceneIndex === 1 && cakeGroup) {
+      const intersects = raycaster.intersectObjects(cakeGroup.children, true);
+      if (intersects.length > 0) {
+        launchFirework();
+        if (typeof confetti === 'function') {
+          confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
+        }
+      }
     }
   }
-
-  // ==========================================================================
-  // Mouse & Resize Handlers
-  // ==========================================================================
 
   function onMouseMove(e) {
     mouse.targetX = (e.clientX / window.innerWidth - 0.5) * 2;
@@ -1124,6 +1201,8 @@ const ThreeWorld = (function () {
     const width = window.innerWidth;
     const height = window.innerHeight;
 
+    const isMobile = width < 768;
+    camera.fov = isMobile ? 58 : 48;
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
 
@@ -1131,29 +1210,22 @@ const ThreeWorld = (function () {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   }
 
-  // ==========================================================================
-  // Main Animation Loop
-  // ==========================================================================
-
   function animate() {
     requestAnimationFrame(animate);
 
     const elapsedTime = clock.getElapsedTime();
 
-    // Mouse parallax lerp
     mouse.x += (mouse.targetX - mouse.x) * 0.05;
     mouse.y += (mouse.targetY - mouse.y) * 0.05;
 
     camera.position.x += (mouse.x * 0.8 - camera.position.x + sceneCameraTargets[currentSceneIndex].pos.x) * 0.04;
     camera.position.y += (-mouse.y * 0.6 - camera.position.y + sceneCameraTargets[currentSceneIndex].pos.y) * 0.04;
 
-    // Starfield gentle rotation
     if (starField) {
       starField.rotation.y = elapsedTime * 0.015;
       starField.rotation.x = Math.sin(elapsedTime * 0.01) * 0.05;
     }
 
-    // Floating background hearts
     if (floatingHeartsSystem) {
       floatingHeartsSystem.children.forEach(mesh => {
         mesh.position.y += mesh.userData.speedY;
@@ -1166,13 +1238,11 @@ const ThreeWorld = (function () {
       });
     }
 
-    // Moving dynamic lights
     pinkPointLight.position.x = Math.sin(elapsedTime * 0.8) * 8;
     pinkPointLight.position.y = Math.cos(elapsedTime * 0.6) * 4;
     goldPointLight.position.x = -Math.sin(elapsedTime * 0.7) * 8;
     goldPointLight.position.y = -Math.cos(elapsedTime * 0.5) * 4;
 
-    // Balloons rising animation
     balloons.forEach(b => {
       b.position.y += b.userData.speedY;
       b.position.x = b.userData.baseX + Math.sin(elapsedTime * b.userData.swaySpeed + b.userData.offset) * 0.6;
@@ -1183,7 +1253,6 @@ const ThreeWorld = (function () {
       }
     });
 
-    // Cake candle flame flicker
     if (candleFlameLight) {
       candleFlameLight.intensity = 2.4 + Math.sin(elapsedTime * 20) * 0.4 + Math.cos(elapsedTime * 35) * 0.3;
       candleFlames.forEach((flame, idx) => {
@@ -1192,7 +1261,6 @@ const ThreeWorld = (function () {
       });
     }
 
-    // Heart heartbeat rhythmic pulsation
     if (pulsingHeartMesh && currentSceneIndex === 3) {
       const beat = (Math.sin(elapsedTime * 3.5) + 1) * 0.5;
       const subtleScale = 0.48 + Math.pow(beat, 4) * 0.04;
@@ -1200,7 +1268,6 @@ const ThreeWorld = (function () {
       pulsingHeartMesh.rotation.y = Math.sin(elapsedTime * 0.8) * 0.2;
     }
 
-    // Photo frame gentle floating
     if (portraitMesh && portraitMesh.parent) {
       portraitMesh.parent.rotation.y = -0.18 + Math.sin(elapsedTime * 0.6) * 0.08 + mouse.x * 0.15;
       portraitMesh.parent.position.y = 0.2 + Math.sin(elapsedTime * 1.2) * 0.15;
@@ -1210,10 +1277,8 @@ const ThreeWorld = (function () {
       bgPhotoMesh.parent.position.y = -0.4 + Math.cos(elapsedTime * 1.1) * 0.12;
     }
 
-    // Fireworks update
     updateFireworks();
 
-    // Occasional fireworks in celebration (Scene 1) and final wish (Scene 5)
     if ((currentSceneIndex === 1 || currentSceneIndex === 5) && Math.random() < 0.035) {
       launchFirework();
     }
@@ -1221,13 +1286,13 @@ const ThreeWorld = (function () {
     renderer.render(scene, camera);
   }
 
-  // Public API
   return {
     init,
     goToScene,
     openEntranceDoor,
     openGiftBox,
     pulseHeart,
-    launchFirework
+    launchFirework,
+    focusPhoto
   };
 })();

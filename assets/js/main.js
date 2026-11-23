@@ -38,8 +38,54 @@ const App = (function () {
   let isAudioPlaying = false;
   let isAudioMuted = false;
 
+  // Touch Swipe tracking
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  // Procedural Web Audio Synth for Magical Chimes
+  let audioCtx = null;
+
+  function initAudioContext() {
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  }
+
+  function playMagicalChime(notes = [523.25, 659.25, 783.99, 1046.50]) {
+    try {
+      initAudioContext();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+      notes.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+        gain.gain.setValueAtTime(0, now + idx * 0.08);
+        gain.gain.linearRampToValueAtTime(0.12, now + idx * 0.08 + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.8);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.9);
+      });
+    } catch (e) {
+      // Audio synth optional
+    }
+  }
+
   function init() {
-    // Collect DOM elements
     scenes = Array.from(document.querySelectorAll('.scene'));
     navButtons = Array.from(document.querySelectorAll('.nav-item-btn'));
     prevArrow = document.getElementById('arrow-prev');
@@ -55,9 +101,27 @@ const App = (function () {
     messageDotsContainer = document.getElementById('message-dots-container');
     giftLetterModal = document.getElementById('gift-letter-modal');
 
-    // 1. Initialize Three.js Engine
+    // 1. Initialize Three.js Engine with loading tracking
+    const loaderBar = document.getElementById('loader-bar-fill');
+    const preloader = document.getElementById('preloader');
+
     if (window.ThreeWorld) {
-      window.ThreeWorld.init('webgl-canvas');
+      window.ThreeWorld.init(
+        'webgl-canvas',
+        function onProgress(pct) {
+          if (loaderBar) loaderBar.style.width = pct + '%';
+        },
+        function onLoaded() {
+          if (loaderBar) loaderBar.style.width = '100%';
+          setTimeout(() => {
+            if (preloader) preloader.classList.add('loaded');
+          }, 400);
+        }
+      );
+    } else {
+      setTimeout(() => {
+        if (preloader) preloader.classList.add('loaded');
+      }, 500);
     }
 
     // 2. Setup Audio Controls
@@ -69,14 +133,18 @@ const App = (function () {
     // 4. Setup Love Messages
     setupLoveMessages();
 
-    // 5. Setup Memory Captions Rotation
+    // 5. Setup Memory Captions Rotation & Photo Tabs
     setupMemoryCaptions();
+    setupPhotoTabs();
 
     // 6. Setup Gift Modal Interactions
     setupGiftModal();
 
     // 7. Setup Cursor Sparkle Trail (Desktop)
     setupCursorSparkles();
+
+    // 8. Setup Touch Swipe Gestures
+    setupTouchGestures();
 
     // Set initial scene
     showScene(0, false);
@@ -92,17 +160,14 @@ const App = (function () {
     audioElement.volume = 0.85;
     audioElement.loop = true;
 
-    // Play/Pause button
     if (playPauseBtn) {
       playPauseBtn.addEventListener('click', togglePlayPause);
     }
 
-    // Mute/Unmute button
     if (muteBtn) {
       muteBtn.addEventListener('click', toggleMute);
     }
 
-    // Attempt to handle ending or pause
     audioElement.addEventListener('play', () => {
       isAudioPlaying = true;
       updateAudioUI();
@@ -115,6 +180,7 @@ const App = (function () {
   }
 
   function startAudioPlayback() {
+    initAudioContext();
     if (!audioElement) return;
     audioElement.play().then(() => {
       isAudioPlaying = true;
@@ -126,6 +192,7 @@ const App = (function () {
 
   function togglePlayPause() {
     if (!audioElement) return;
+    initAudioContext();
     if (audioElement.paused) {
       audioElement.play().then(() => {
         isAudioPlaying = true;
@@ -168,15 +235,13 @@ const App = (function () {
   // ==========================================================================
 
   function setupSceneNavigation() {
-    // Bottom navigation pills
     navButtons.forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', () => {
         const targetIndex = parseInt(btn.getAttribute('data-scene'), 10);
         goTo(targetIndex);
       });
     });
 
-    // Arrow controls
     if (prevArrow) {
       prevArrow.addEventListener('click', () => {
         if (currentScene > 0) goTo(currentScene - 1);
@@ -189,7 +254,6 @@ const App = (function () {
       });
     }
 
-    // Keyboard navigation (Arrow keys)
     window.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowRight' || e.key === 'PageDown') {
         if (currentScene < scenes.length - 1) goTo(currentScene + 1);
@@ -198,40 +262,33 @@ const App = (function () {
       }
     });
 
-    // Enter Surprise Button (Scene 1 -> Scene 2)
     const enterBtn = document.getElementById('enter-surprise-btn');
     if (enterBtn) {
       enterBtn.addEventListener('click', () => {
-        startAudioPlayback();
         triggerDoorAndCelebrate();
       });
     }
 
-    // Celebration Next Button (Scene 2 -> Scene 3)
     const celebrationNextBtn = document.getElementById('celebration-next-btn');
     if (celebrationNextBtn) {
       celebrationNextBtn.addEventListener('click', () => goTo(2));
     }
 
-    // Memories Next Button (Scene 3 -> Scene 4)
     const memoriesNextBtn = document.getElementById('memories-next-btn');
     if (memoriesNextBtn) {
       memoriesNextBtn.addEventListener('click', () => goTo(3));
     }
 
-    // Messages Next Button (Scene 4 -> Scene 5)
     const messagesNextBtn = document.getElementById('messages-next-btn');
     if (messagesNextBtn) {
       messagesNextBtn.addEventListener('click', () => goTo(4));
     }
 
-    // Gift Open Button (Scene 5)
     const openGiftBtn = document.getElementById('open-gift-btn');
     if (openGiftBtn) {
       openGiftBtn.addEventListener('click', () => triggerGiftOpening());
     }
 
-    // Final Next Button (inside Gift Modal -> Scene 6)
     const proceedToFinalBtn = document.getElementById('proceed-to-final-btn');
     if (proceedToFinalBtn) {
       proceedToFinalBtn.addEventListener('click', () => {
@@ -240,7 +297,6 @@ const App = (function () {
       });
     }
 
-    // Replay Button (Scene 6 -> Scene 1)
     const replayBtn = document.getElementById('replay-magic-btn');
     if (replayBtn) {
       replayBtn.addEventListener('click', () => {
@@ -250,7 +306,9 @@ const App = (function () {
   }
 
   function triggerDoorAndCelebrate() {
-    // 1. Trigger 3D Door Open animation & forward camera zoom
+    startAudioPlayback();
+    playMagicalChime([523.25, 659.25, 783.99, 1046.50]);
+
     if (window.ThreeWorld) {
       window.ThreeWorld.openEntranceDoor(() => {
         showScene(1, true);
@@ -261,18 +319,20 @@ const App = (function () {
     }
   }
 
+  function onDoorClicked() {
+    triggerDoorAndCelebrate();
+  }
+
   function goTo(index) {
     if (index < 0 || index >= scenes.length) return;
     if (index === currentScene) return;
 
     showScene(index, true);
 
-    // Three.js camera movement
     if (window.ThreeWorld) {
       window.ThreeWorld.goToScene(index, true);
     }
 
-    // Scene specific initializations
     if (index === 1) {
       fireConfettiBurst();
     } else if (index === 5) {
@@ -300,7 +360,6 @@ const App = (function () {
       }
     });
 
-    // Update Arrow visibility
     if (prevArrow) {
       if (index === 0) prevArrow.classList.add('hidden');
       else prevArrow.classList.remove('hidden');
@@ -320,7 +379,6 @@ const App = (function () {
   function setupLoveMessages() {
     if (!messageDotsContainer) return;
 
-    // Generate dots
     messageDotsContainer.innerHTML = '';
     loveMessages.forEach((_, idx) => {
       const dot = document.createElement('div');
@@ -330,7 +388,6 @@ const App = (function () {
 
     displayLoveMessage(0);
 
-    // Click on message card to also advance message
     const card = document.getElementById('love-message-card');
     if (card) {
       card.addEventListener('click', nextLoveMessage);
@@ -354,7 +411,6 @@ const App = (function () {
       messageCounterText.innerText = `Message ${currentMessageIndex + 1} of ${loveMessages.length}`;
     }
 
-    // Update dots
     const dots = document.querySelectorAll('.message-dot');
     dots.forEach((dot, idx) => {
       if (idx === currentMessageIndex) dot.classList.add('active');
@@ -366,19 +422,19 @@ const App = (function () {
     let nextIdx = (currentMessageIndex + 1) % loveMessages.length;
     displayLoveMessage(nextIdx);
 
-    // Trigger 3D Heart Pulse
+    playMagicalChime([659.25, 783.99, 987.77, 1318.51]);
+
     if (window.ThreeWorld) {
       window.ThreeWorld.pulseHeart();
     }
   }
 
-  // Raycast click callback from 3D Heart
   function onHeartClicked() {
     nextLoveMessage();
   }
 
   // ==========================================================================
-  // Memory Captions Carousel (Scene 3)
+  // Memories Scene & Photo Selector (Scene 3)
   // ==========================================================================
 
   function setupMemoryCaptions() {
@@ -388,12 +444,26 @@ const App = (function () {
     if (captionInterval) clearInterval(captionInterval);
 
     captionInterval = setInterval(() => {
-      if (currentScene !== 2) return; // Only rotate when on memories scene
+      if (currentScene !== 2) return;
 
       captionElems[currentCaptionIndex].classList.remove('active');
       currentCaptionIndex = (currentCaptionIndex + 1) % captionElems.length;
       captionElems[currentCaptionIndex].classList.add('active');
     }, 4500);
+  }
+
+  function setupPhotoTabs() {
+    const tabs = document.querySelectorAll('.photo-tab-btn');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const photoType = tab.getAttribute('data-photo');
+        if (window.ThreeWorld) {
+          window.ThreeWorld.focusPhoto(photoType);
+        }
+      });
+    });
   }
 
   // ==========================================================================
@@ -422,8 +492,8 @@ const App = (function () {
     }
 
     isGiftOpened = true;
+    playMagicalChime([523.25, 659.25, 783.99, 1046.50, 1318.51]);
 
-    // Trigger 3D gift box opening
     if (window.ThreeWorld) {
       window.ThreeWorld.openGiftBox(() => {
         openGiftModal();
@@ -449,6 +519,37 @@ const App = (function () {
     if (giftLetterModal) {
       giftLetterModal.classList.remove('open');
     }
+  }
+
+  // ==========================================================================
+  // Touch Gestures (Swipe for Mobile)
+  // ==========================================================================
+
+  function setupTouchGestures() {
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', (e) => {
+      if (e.changedTouches.length === 1) {
+        const deltaX = e.changedTouches[0].clientX - touchStartX;
+        const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+        // Ensure horizontal swipe
+        if (Math.abs(deltaX) > 60 && Math.abs(deltaY) < 50) {
+          if (deltaX < 0) {
+            // Swipe Left -> Next
+            if (currentScene < scenes.length - 1) goTo(currentScene + 1);
+          } else {
+            // Swipe Right -> Prev
+            if (currentScene > 0) goTo(currentScene - 1);
+          }
+        }
+      }
+    }, { passive: true });
   }
 
   // ==========================================================================
@@ -488,14 +589,14 @@ const App = (function () {
   // ==========================================================================
 
   function setupCursorSparkles() {
-    if (window.matchMedia('(pointer: coarse)').matches) return; // Touch device
+    if (window.matchMedia('(pointer: coarse)').matches) return;
 
     let lastSparkleTime = 0;
     const colors = ['#fde047', '#ff7597', '#ffffff', '#c084fc'];
 
     window.addEventListener('mousemove', (e) => {
       const now = performance.now();
-      if (now - lastSparkleTime < 50) return; // Throttle
+      if (now - lastSparkleTime < 50) return;
       lastSparkleTime = now;
 
       const sparkle = document.createElement('div');
@@ -519,12 +620,12 @@ const App = (function () {
   return {
     init,
     goTo,
+    onDoorClicked,
     onHeartClicked,
     onGiftBoxClicked
   };
 })();
 
-// Initialize on DOMContentLoaded
 window.addEventListener('DOMContentLoaded', () => {
   App.init();
 });

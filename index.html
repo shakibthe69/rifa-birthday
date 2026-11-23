@@ -20,6 +20,16 @@
 </head>
 <body>
 
+  <!-- Romantic Loading Screen -->
+  <div id="preloader" role="status" aria-live="polite">
+    <div class="loader-content">
+      <div class="pulsing-heart-loader">💖</div>
+      <div class="loader-title">Preparing Rifa's Magical Surprise...</div>
+      <div class="loader-bar-bg"><div class="loader-bar-fill" id="loader-bar-fill"></div></div>
+      <div class="loader-tip">Crafted with all my love, Shakib Ahmed ✨</div>
+    </div>
+  </div>
+
   <!-- Background Photo Overlay (Photograph 1 with dark romantic mood) -->
   <div id="bg-photo-overlay" aria-hidden="true"></div>
 
@@ -72,7 +82,7 @@
         </button>
 
         <div class="door-hint">
-          <span>Tap to unlock the magical door</span>
+          <span>✨ Click the 3D golden door or press the button</span>
         </div>
 
         <p class="author-from">With all my love, Shakib Ahmed ❤️</p>
@@ -107,7 +117,10 @@
         <div class="memories-header">
           <span class="script-tag">Timeless Moments</span>
           <h2 class="display-title">Every Picture Holds a Little Piece of Happiness.</h2>
-          <div class="photo-interactive-badge">✨ Interactive 3D Photo Frame</div>
+          <div class="memory-photo-tabs">
+            <button class="photo-tab-btn active" data-photo="portrait">Photo 1: Rifa's Portrait 💖</button>
+            <button class="photo-tab-btn" data-photo="background">Photo 2: Romantic Memory ✨</button>
+          </div>
         </div>
 
         <div class="memory-captions-carousel">
